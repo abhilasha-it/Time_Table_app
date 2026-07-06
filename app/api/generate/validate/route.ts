@@ -79,7 +79,7 @@ export async function GET(request: Request) {
 
     // 3. Compute demand (only for sections of targetYearId if specified)
     const targetSections = targetYearId 
-      ? sections.filter(s => s.yearId === targetYearId)
+      ? sections.filter((s: any) => s.yearId === targetYearId)
       : sections;
 
     let requiredClassroomHours = 0;
@@ -88,7 +88,7 @@ export async function GET(request: Request) {
 
     for (const section of targetSections) {
       const academicSubjects = subjects.filter(
-        s => s.yearId === section.yearId && s.type === 'ACADEMIC'
+        (s: any) => s.yearId === section.yearId && s.type === 'ACADEMIC'
       );
 
       for (const subject of academicSubjects) {

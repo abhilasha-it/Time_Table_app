@@ -162,7 +162,7 @@ export async function validateSwapOrMove(
       const ts = mod.timeSlotId ? targetTimeSlots.find(t => t.id === mod.timeSlotId)! : entry.timeSlot;
       const rm = mod.roomId ? targetRooms.find(r => r.id === mod.roomId)! : entry.room;
       const fac = mod.facultyId ? targetFaculties.find(f => f.id === mod.facultyId)! : entry.faculty;
-      const sub = mod.subjectId ? targetSubjects.find(s => s.id === mod.subjectId)! : entry.subject;
+      const sub = mod.subjectId ? targetSubjects.find((s: any) => s.id === mod.subjectId)! : entry.subject;
       const asstFac = mod.assistantFacultyId !== undefined
         ? (mod.assistantFacultyId ? targetFaculties.find(f => f.id === mod.assistantFacultyId)! : null)
         : entry.assistantFaculty;

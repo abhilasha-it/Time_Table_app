@@ -162,7 +162,7 @@ export async function POST(
         return NextResponse.json({ error: `Not enough periods left in the day to schedule ${consecutive} consecutive slots.` }, { status: 400 });
       }
 
-      const slotIds = slotsToAllocate.map(s => s.id);
+      const slotIds = slotsToAllocate.map((s: any) => s.id);
 
       const subject = await db.subject.findUnique({
         where: { id: body.subjectId }
