@@ -22,8 +22,8 @@ export async function GET(request: Request) {
     const timeSlots = await db.timeSlot.findMany();
     const fixedAllocations = await db.fixedAllocation.findMany();
 
-    const classrooms = rooms.filter(r => r.type === 'CLASSROOM');
-    const labs = rooms.filter(r => r.type === 'LAB');
+    const classrooms = rooms.filter((r: any) => r.type === 'CLASSROOM');
+    const labs = rooms.filter((r: any) => r.type === 'LAB');
     const totalSlots = timeSlots.length; // e.g. 42
 
     // Get active timetable
@@ -64,13 +64,13 @@ export async function GET(request: Request) {
 
     // Deduct FixedAllocations (training slots)
     const fixedClassroomHours = fixedAllocations.filter(fa => {
-      const room = rooms.find(r => r.id === fa.roomId);
+      const room = rooms.find((r: any) => r.id === fa.roomId);
       // For yearly check, only count if it belongs to target year or other years
       return room && room.type === 'CLASSROOM';
     }).length;
 
     const fixedLabHours = fixedAllocations.filter(fa => {
-      const room = rooms.find(r => r.id === fa.roomId);
+      const room = rooms.find((r: any) => r.id === fa.roomId);
       return room && room.type === 'LAB';
     }).length;
 
@@ -84,7 +84,7 @@ export async function GET(request: Request) {
 
     let requiredClassroomHours = 0;
     let requiredLabHours = 0;
-    const maxLabRoomCap = labs.length > 0 ? Math.max(...labs.map(r => r.capacity)) : 35;
+    const maxLabRoomCap = labs.length > 0 ? Math.max(...labs.map((r: any) => r.capacity)) : 35;
 
     for (const section of targetSections) {
       const academicSubjects = subjects.filter(

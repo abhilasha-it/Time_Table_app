@@ -159,9 +159,9 @@ export async function validateSwapOrMove(
   const simulated = allEntries.map(entry => {
     const mod = modifications.find(m => m.id === entry.id);
     if (mod) {
-      const ts = mod.timeSlotId ? targetTimeSlots.find(t => t.id === mod.timeSlotId)! : entry.timeSlot;
-      const rm = mod.roomId ? targetRooms.find(r => r.id === mod.roomId)! : entry.room;
-      const fac = mod.facultyId ? targetFaculties.find(f => f.id === mod.facultyId)! : entry.faculty;
+      const ts = mod.timeSlotId ? targetTimeSlots.find((t: any) => t.id === mod.timeSlotId)! : entry.timeSlot;
+      const rm = mod.roomId ? targetRooms.find((r: any) => r.id === mod.roomId)! : entry.room;
+      const fac = mod.facultyId ? targetFaculties.find((f: any) => f.id === mod.facultyId)! : entry.faculty;
       const sub = mod.subjectId ? targetSubjects.find((s: any) => s.id === mod.subjectId)! : entry.subject;
       const asstFac = mod.assistantFacultyId !== undefined
         ? (mod.assistantFacultyId ? targetFaculties.find(f => f.id === mod.assistantFacultyId)! : null)
