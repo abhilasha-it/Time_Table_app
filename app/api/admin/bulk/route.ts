@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     const errors: string[] = [];
 
     // Use transaction to ensure atomic execution
-    await db.$transaction(async (tx) => {
+    await db.$transaction(async (tx: any) => {
       if (entity === 'faculty') {
         for (let i = 0; i < records.length; i++) {
           const rec = records[i];
