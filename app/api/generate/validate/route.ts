@@ -52,8 +52,8 @@ export async function GET(request: Request) {
       });
 
       // Deduct these room hours directly from supply
-      const classEntries = otherYearEntries.filter(e => e.room.type === 'CLASSROOM');
-      const labEntries = otherYearEntries.filter(e => e.room.type === 'LAB');
+      const classEntries = otherYearEntries.filter((e: any) => e.room.type === 'CLASSROOM');
+      const labEntries = otherYearEntries.filter((e: any) => e.room.type === 'LAB');
       
       otherYearClassroomHours = classEntries.length;
       otherYearLabHours = labEntries.length;
