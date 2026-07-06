@@ -48,7 +48,7 @@ async function fetchGroupedSlots(
     for (const fac of faculties) {
       if (facultyId && fac.id !== facultyId) continue;
 
-      const facultySlots = slots.filter(s => s.facultyId === fac.id);
+      const facultySlots = slots.filter((s: any) => s.facultyId === fac.id);
       
       // Only export faculty with scheduled slots
       if (facultySlots.length > 0) {
@@ -377,7 +377,7 @@ export async function generatePdfBuffer(
         }
 
         // Find slots scheduled at this day and period
-        const matched = group.slots.filter(s => s.timeSlot.day === d && s.timeSlot.slotIndex === slotIdx);
+        const matched = group.slots.filter((s: any) => s.timeSlot.day === d && s.timeSlot.slotIndex === slotIdx);
 
         if (matched.length > 0) {
           const slot = matched[0]; // Take the first parallel slot for cell display
