@@ -1,10 +1,14 @@
 import { PrismaClient } from '@prisma/client';
-import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
 
 const prismaClientSingleton = () => {
-  const url = process.env.DATABASE_URL || 'file:./dev.db';
-  const adapter = new PrismaBetterSqlite3({ url });
-  return new PrismaClient({ adapter });
+  const dbUrl = process.env.DATABASE_URL || 'file:./dev.db';
+  if (dbUrl.startsWith('postgres') || dbUrl.startsWith('mongodb') || dbUrl.startsWith('mysql')) {
+    return new PrismaClient();
+  } else {
+    const { PrismaBetterSqlite3 } = require('@prisma/adapter-better-sqlite3');
+    const adapter = new PrismaBetterSqlite3({ url: dbUrl });
+    return new PrismaClient({ adapter });
+  }
 };
 
 const globalForPrisma = globalThis as unknown as {

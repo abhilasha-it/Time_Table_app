@@ -1,8 +1,14 @@
 const { PrismaClient } = require('@prisma/client');
-const { PrismaBetterSqlite3 } = require('@prisma/adapter-better-sqlite3');
 
-const adapter = new PrismaBetterSqlite3({ url: 'file:./dev.db' });
-const prisma = new PrismaClient({ adapter });
+let prisma;
+const dbUrl = process.env.DATABASE_URL || 'file:./dev.db';
+if (dbUrl.startsWith('postgres') || dbUrl.startsWith('mongodb') || dbUrl.startsWith('mysql')) {
+  prisma = new PrismaClient();
+} else {
+  const { PrismaBetterSqlite3 } = require('@prisma/adapter-better-sqlite3');
+  const adapter = new PrismaBetterSqlite3({ url: dbUrl });
+  prisma = new PrismaClient({ adapter });
+}
 
 async function main() {
   console.log("Seeding redesigned timetable database...");
