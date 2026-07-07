@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getMetadata } from '@/api/timetable';
+import { getMetadata } from '@/services/timetable';
 
 export async function GET() {
   try {

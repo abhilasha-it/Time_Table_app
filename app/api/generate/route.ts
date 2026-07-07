@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { runGeneration } from '@/api/generate';
+import { runGeneration } from '@/services/generate';
 
 export async function POST(request: Request) {
   try {

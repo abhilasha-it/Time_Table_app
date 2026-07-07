@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getTimetable, updateSlot, deleteSlot } from '@/api/timetable';
+import { getTimetable, updateSlot, deleteSlot } from '@/services/timetable';
 import db from '@/models/db';
 import { validateSwapOrMove } from './swap/route';
 
