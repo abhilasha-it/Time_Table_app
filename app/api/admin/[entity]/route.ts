@@ -94,12 +94,12 @@ export async function POST(
     }
 
     if (entity === 'sections') {
-      const { sectionName, strength, yearId } = body;
+      const { sectionName, strength, yearId, lunchSlotIndex } = body;
       const year = await db.year.findUnique({
         where: { id: yearId },
         include: { branch: true }
       });
-      const name = `${year?.yearNumber} Year ${year?.branch?.code} - Section ${sectionName}`;
+      const name = `${year?.yearNumber} Yr ${year?.branch?.code} - ${sectionName}`;
 
       const createdSection = await db.section.create({
         data: {
@@ -107,6 +107,7 @@ export async function POST(
           strength: Number(strength),
           yearId,
           name,
+          lunchSlotIndex: lunchSlotIndex !== undefined ? Number(lunchSlotIndex) : 4
         },
       });
 
@@ -315,6 +316,15 @@ export async function PUT(
 
     if (!id) {
       return NextResponse.json({ error: "Missing ID for update." }, { status: 400 });
+    }
+
+    // Specific validation for sections (update dynamic display name)
+    if (entity === 'sections') {
+      const year = await db.year.findUnique({
+        where: { id: data.yearId },
+        include: { branch: true }
+      });
+      data.name = `${year?.yearNumber} Yr ${year?.branch?.code} - ${data.sectionName}`;
     }
 
     // Specific validation for fixed-allocations

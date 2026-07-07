@@ -287,7 +287,7 @@ export default function AdminPage() {
     const { name, value } = e.target;
     setFormData((prev: any) => ({
       ...prev,
-      [name]: name === "credits" || name === "weeklyLectureHours" || name === "weeklyLabHours" || name === "maxHoursPerWeek" || name === "capacity" || name === "day" || name === "slotIndex" || name === "strength"
+      [name]: name === "credits" || name === "weeklyLectureHours" || name === "weeklyLabHours" || name === "maxHoursPerWeek" || name === "capacity" || name === "day" || name === "slotIndex" || name === "strength" || name === "lunchSlotIndex"
         ? Number(value)
         : value
     }));
@@ -542,7 +542,7 @@ export default function AdminPage() {
                           ) : (
                             metadata.sections.map((sec: any) => (
                               <tr key={sec.id} className="hover:bg-slate-900/10">
-                                <td className="px-6 py-4 font-bold text-white">Section {sec.sectionName}</td>
+                                <td className="px-6 py-4 font-bold text-white">{sec.sectionName}</td>
                                 <td className="px-6 py-4 text-slate-300">
                                   {sec.year?.branch?.code} ({sec.year?.yearNumber} Yr)
                                 </td>
@@ -854,16 +854,16 @@ export default function AdminPage() {
               {activeTab === "sections" && (
                 <>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Section Letter</label>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Section Name (e.g. A, B, Section 1, CSE-A)</label>
                     <input
                       type="text"
                       name="sectionName"
                       required
-                      maxLength={1}
-                      value={formData.sectionName || "A"}
+                      maxLength={50}
+                      value={formData.sectionName || ""}
                       onChange={handleInputChange}
-                      placeholder="e.g. A"
-                      className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono uppercase"
+                      placeholder="e.g. Section A"
+                      className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                   </div>
                   <div>
