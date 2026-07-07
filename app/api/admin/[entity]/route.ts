@@ -274,6 +274,8 @@ export async function POST(
           details: `Added ${consecutive} consecutive Fixed Allocations for Subject ${subject?.code}, Faculty ${faculty?.name}, Section ${section?.name}, Room ${room?.name} starting at Day ${startSlot.day}, Period ${startSlot.slotIndex + 1}.`
         }
       });
+
+      return NextResponse.json(createdAllocations[0]);
     } else {
       // General audit log for other entity creation
       await db.auditLog.create({
