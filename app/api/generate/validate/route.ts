@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     });
 
     const rooms = await db.room.findMany();
-    const timeSlots = await db.timeSlot.findMany();
+    const timeSlots = (await db.timeSlot.findMany()).filter((ts: any) => ts.day < 5);
     const fixedAllocations = await db.fixedAllocation.findMany();
 
     const classrooms = rooms.filter((r: any) => r.type === 'CLASSROOM');

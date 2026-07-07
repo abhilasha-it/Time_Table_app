@@ -65,9 +65,9 @@ export class TimeTableCSP {
       });
       this.faculties = await db.faculty.findMany();
       this.rooms = await db.room.findMany();
-      this.timeSlots = await db.timeSlot.findMany({
+      this.timeSlots = (await db.timeSlot.findMany({
         orderBy: [{ day: 'asc' }, { slotIndex: 'asc' }]
-      });
+      })).filter((ts: any) => ts.day < 5);
       this.fixedAllocations = await db.fixedAllocation.findMany({
         include: { timeSlot: true }
       });

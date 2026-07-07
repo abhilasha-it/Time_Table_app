@@ -41,7 +41,7 @@ export default function YearlyScheduler({
   const [moveTarget, setMoveTarget] = useState<{ slotId: string; timeSlotId: string } | null>(null);
   const [selectedRoomId, setSelectedRoomId] = useState("");
 
-  const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
   const periods = [
     { label: "P1", isLunch: false },
     { label: "P2", isLunch: false },

@@ -46,7 +46,7 @@ async function main() {
   ];
 
   const timeSlots = [];
-  for (let day = 0; day < 6; day++) {
+  for (let day = 0; day < 5; day++) {
     for (const t of times) {
       const slot = await prisma.timeSlot.create({
         data: {

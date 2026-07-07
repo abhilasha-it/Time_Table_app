@@ -1133,7 +1133,6 @@ export default function AdminPage() {
                       <option value={2}>Wednesday</option>
                       <option value={3}>Thursday</option>
                       <option value={4}>Friday</option>
-                      <option value={5}>Saturday</option>
                     </select>
                   </div>
                   <div>

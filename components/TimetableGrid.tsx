@@ -82,7 +82,7 @@ export default function TimetableGrid({
     return () => clearTimeout(delay);
   }, [editForm.subjectId, editForm.facultyId, editForm.assistantFacultyId, editForm.roomId, editingSlot]);
 
-  const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
   // Find section details to get lunch index
   const branchObj = metadata.branches.find((b) => b.id === selectedFilters.branchId);
