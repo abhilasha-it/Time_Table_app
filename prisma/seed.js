@@ -15,6 +15,11 @@ if (dbUrl.startsWith('postgres') || dbUrl.startsWith('mongodb') || dbUrl.startsW
 }
 
 async function main() {
+  const timeslotsCount = await prisma.timeSlot.count();
+  if (timeslotsCount > 0) {
+    console.log("Database already seeded. Skipping seed execution to prevent data loss.");
+    return;
+  }
   console.log("Seeding redesigned timetable database...");
 
   // 1. Clear existing data in reverse dependency order

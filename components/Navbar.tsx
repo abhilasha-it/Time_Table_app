@@ -18,10 +18,10 @@ export default function Navbar({ onGenerate, isGenerating }: NavbarProps) {
             <Calendar className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-lg font-bold bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
-              AutoSchedule AI
+            <h1 className="text-lg font-bold bg-gradient-to-r from-white via-indigo-200 to-purple-200 bg-clip-text text-transparent tracking-wide">
+              ACADEMIC SCHEDULING PORTAL
             </h1>
-            <p className="text-xs text-slate-400">Engineering College Timetable Generator</p>
+            <p className="text-[10px] uppercase font-bold tracking-wider text-indigo-400">Engineering College Control Panel</p>
           </div>
         </div>
 

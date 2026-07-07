@@ -307,16 +307,20 @@ export default function AdminPage() {
       <div className="relative min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-white">
         {/* Decorative background glows */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-500/10 via-slate-950/20 to-slate-950 pointer-events-none" />
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl" />
+        <div className="absolute top-1/4 left-1/3 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[100px]" />
+        <div className="absolute bottom-1/4 right-1/3 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[100px]" />
 
-        <div className="relative z-10 w-full max-w-md bg-slate-900/40 border border-white/10 rounded-3xl p-8 backdrop-blur-md shadow-2xl space-y-6">
+        <div className="relative z-10 w-full max-w-md bg-slate-900/60 border border-white/10 rounded-3xl p-8 backdrop-blur-xl shadow-2xl space-y-6">
           <div className="text-center space-y-2">
-            <div className="inline-flex rounded-2xl bg-indigo-600/10 p-3 text-indigo-400 border border-indigo-500/20">
+            <div className="inline-flex rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 p-3.5 text-white shadow-lg shadow-indigo-600/30 border border-white/10">
               <Lock className="h-6 w-6" />
             </div>
-            <h1 className="text-xl font-bold tracking-tight text-white md:text-2xl">Admin Authentication</h1>
-            <p className="text-xs text-slate-400">Please enter administrator credentials to proceed.</p>
+            <h1 className="text-2xl font-bold tracking-tight text-white md:text-3xl">
+              Academic Portal
+            </h1>
+            <p className="text-xs text-slate-400">
+              Administrative Control and Constraint Engines Sign-In
+            </p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
@@ -334,7 +338,7 @@ export default function AdminPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="e.g. admin"
-                className="w-full rounded-xl border border-white/10 bg-slate-950 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                className="w-full rounded-xl border border-white/10 bg-slate-950/80 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-600"
               />
             </div>
 
@@ -346,20 +350,20 @@ export default function AdminPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full rounded-xl border border-white/10 bg-slate-950 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                className="w-full rounded-xl border border-white/10 bg-slate-950/80 px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-600"
               />
             </div>
 
             <button
               type="submit"
-              className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 hover:shadow-indigo-600/30 transition cursor-pointer"
+              className="w-full rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 py-3 text-sm font-semibold text-white hover:from-indigo-500 hover:to-purple-500 shadow-lg shadow-indigo-600/20 hover:shadow-indigo-500/30 active:scale-[0.98] transition-all cursor-pointer"
             >
-              Sign In
+              Sign In to Dashboard
             </button>
           </form>
 
-          <div className="text-center">
-            <Link href="/" className="text-xs text-slate-500 hover:text-slate-300 transition">
+          <div className="text-center pt-2 border-t border-white/5">
+            <Link href="/" className="text-xs text-slate-400 hover:text-white transition">
               Back to Home page
             </Link>
           </div>
@@ -403,6 +407,30 @@ export default function AdminPage() {
           >
             Logout
           </button>
+        </div>
+
+        {/* Dynamic Portal Stats Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+          <div className="rounded-2xl border border-white/5 bg-slate-900/40 p-4 backdrop-blur-sm shadow-md">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Branches</span>
+            <span className="text-2xl font-bold text-indigo-400 block mt-1">{metadata.branches?.length || 0}</span>
+          </div>
+          <div className="rounded-2xl border border-white/5 bg-slate-900/40 p-4 backdrop-blur-sm shadow-md">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Sections</span>
+            <span className="text-2xl font-bold text-purple-400 block mt-1">{metadata.sections?.length || 0}</span>
+          </div>
+          <div className="rounded-2xl border border-white/5 bg-slate-900/40 p-4 backdrop-blur-sm shadow-md">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Subjects</span>
+            <span className="text-2xl font-bold text-pink-400 block mt-1">{metadata.subjects?.length || 0}</span>
+          </div>
+          <div className="rounded-2xl border border-white/5 bg-slate-900/40 p-4 backdrop-blur-sm shadow-md">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Faculty</span>
+            <span className="text-2xl font-bold text-emerald-400 block mt-1">{metadata.faculty?.length || 0}</span>
+          </div>
+          <div className="rounded-2xl border border-white/5 bg-slate-900/40 p-4 backdrop-blur-sm shadow-md col-span-2 sm:col-span-1">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Classrooms & Labs</span>
+            <span className="text-2xl font-bold text-amber-400 block mt-1">{metadata.rooms?.length || 0}</span>
+          </div>
         </div>
 
         {/* Dynamic Layout Split */}

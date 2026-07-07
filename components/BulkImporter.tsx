@@ -1,16 +1,16 @@
 "use client";
 
 import React, { useState } from "react";
-import { Upload, AlertCircle, CheckCircle, HelpCircle, Save, RefreshCw } from "lucide-react";
+import { Upload, AlertCircle, CheckCircle, HelpCircle, Save, RefreshCw, FileSpreadsheet } from "lucide-react";
 
 interface BulkImporterProps {
   onSuccess: () => void;
 }
 
-type ImportEntity = "faculty" | "subjects" | "fixed-allocations";
+type ImportEntity = "unified-excel" | "faculty" | "subjects" | "fixed-allocations";
 
 export default function BulkImporter({ onSuccess }: BulkImporterProps) {
-  const [entity, setEntity] = useState<ImportEntity>("faculty");
+  const [entity, setEntity] = useState<ImportEntity>("unified-excel");
   const [csvText, setCsvText] = useState("");
   const [parsedData, setParsedData] = useState<any[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
@@ -18,14 +18,17 @@ export default function BulkImporter({ onSuccess }: BulkImporterProps) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [backendErrors, setBackendErrors] = useState<string[]>([]);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
   const templates = {
+    "unified-excel": "Course,Branch,Semester,Section,Subject Name,Subject Code,Subject Type,Faculty Name\nB.Tech,CSE,5,A,Database Management Systems,CS302,ACADEMIC,Dr. Alok\nB.Tech,CSE,5,A,Compiler Design Lab,CS304,LAB,Dr. Alok\nB.Tech,ECE,3,B,Analog Electronics,EC201,ACADEMIC,Prof. Neha Gupta",
     faculty: "name,department,maxHoursPerWeek,source\nDr. Alok Sharma,CSE,16,COLLEGE\nProf. Neha Gupta,ECE,12,COLLEGE",
     subjects: "code,name,type,credits,weeklyLectureHours,weeklyLabHours,branchCode,yearNumber\nCS-301,Database Systems,ACADEMIC,4,3,3,CSE,3\nTRN-101,Soft Skills,TRAINING,2,0,2,CSE,3",
     "fixed-allocations": "subjectCode,facultyName,sectionName,branchCode,yearNumber,day,slotIndex,roomName\nTRN-101,Dr. Alok Sharma,A,CSE,3,0,0,LH-101"
   };
 
   const handleLoadTemplate = () => {
+    setUploadedFile(null);
     setCsvText(templates[entity]);
     handleParse(templates[entity]);
   };
@@ -43,14 +46,12 @@ export default function BulkImporter({ onSuccess }: BulkImporterProps) {
       return;
     }
 
-    // Split headers (handle optional trailing carriage returns)
     const rawHeaders = lines[0].split(",").map(h => h.trim().replace(/^["']|["']$/g, ""));
     setHeaders(rawHeaders);
 
     const data: any[] = [];
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i];
-      // Simple comma split (doesn't handle commas inside quotes, but fine for basic templates)
       const values = line.split(",").map(v => v.trim().replace(/^["']|["']$/g, ""));
       const record: any = {};
       
@@ -64,6 +65,7 @@ export default function BulkImporter({ onSuccess }: BulkImporterProps) {
   };
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setUploadedFile(null);
     setCsvText(e.target.value);
     handleParse(e.target.value);
   };
@@ -72,6 +74,25 @@ export default function BulkImporter({ onSuccess }: BulkImporterProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setErrorMsg(null);
+    setBackendErrors([]);
+    setSuccessMsg(null);
+
+    // If it's a binary Excel sheet, handle via multipart form upload directly
+    if (file.name.endsWith(".xlsx") || file.name.endsWith(".xls")) {
+      setUploadedFile(file);
+      setCsvText(`File loaded: ${file.name}\n(Size: ${(file.size / 1024).toFixed(1)} KB)`);
+      setHeaders(["File Name", "Type", "Status"]);
+      setParsedData([{
+        "File Name": file.name,
+        "Type": "Excel Spreadsheet",
+        "Status": "Ready to Import"
+      }]);
+      return;
+    }
+
+    // Otherwise parse CSV/TXT locally
+    setUploadedFile(null);
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target?.result as string;
@@ -89,11 +110,24 @@ export default function BulkImporter({ onSuccess }: BulkImporterProps) {
     setSuccessMsg(null);
 
     try {
-      const res = await fetch("/api/admin/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ entity, records: parsedData })
-      });
+      let res;
+      // Handle spreadsheet file upload
+      if (uploadedFile) {
+        const formData = new FormData();
+        formData.append("file", uploadedFile);
+        formData.append("entity", entity);
+        res = await fetch("/api/admin/bulk", {
+          method: "POST",
+          body: formData // Content-Type boundary is set automatically by the browser
+        });
+      } else {
+        // Fallback to JSON payload
+        res = await fetch("/api/admin/bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ entity, records: parsedData })
+        });
+      }
 
       const result = await res.json();
       if (!res.ok) {
@@ -102,10 +136,14 @@ export default function BulkImporter({ onSuccess }: BulkImporterProps) {
           setBackendErrors(result.errors);
         }
       } else {
-        setSuccessMsg(`Successfully imported ${result.createdCount} records into the database!`);
+        setSuccessMsg(uploadedFile 
+          ? `Successfully imported Excel template file data into the database!` 
+          : `Successfully imported ${result.createdCount} records into the database!`
+        );
         setCsvText("");
         setParsedData([]);
         setHeaders([]);
+        setUploadedFile(null);
         onSuccess();
       }
     } catch (err: any) {
@@ -124,26 +162,32 @@ export default function BulkImporter({ onSuccess }: BulkImporterProps) {
           <h4 className="text-sm font-semibold text-white">Select Entity to Import</h4>
           <p className="text-xs text-slate-400 mt-0.5">Upload records in transactional batches</p>
         </div>
-        <div className="flex rounded-xl bg-slate-950 p-1 border border-white/5">
-          {(["faculty", "subjects", "fixed-allocations"] as ImportEntity[]).map((tab) => (
+        <div className="flex rounded-xl bg-slate-950 p-1 border border-white/5 overflow-x-auto scrollbar-none max-w-full">
+          {([
+            { id: "unified-excel", label: "Unified Excel Template" },
+            { id: "faculty", label: "Faculty" },
+            { id: "subjects", label: "Subjects" },
+            { id: "fixed-allocations", label: "Fixed Allocations" }
+          ]).map((tab) => (
             <button
-              key={tab}
+              key={tab.id}
               onClick={() => {
-                setEntity(tab);
+                setEntity(tab.id as ImportEntity);
                 setCsvText("");
                 setParsedData([]);
                 setHeaders([]);
                 setErrorMsg(null);
                 setBackendErrors([]);
                 setSuccessMsg(null);
+                setUploadedFile(null);
               }}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer ${
-                entity === tab 
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer ${
+                entity === tab.id 
                   ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20" 
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              {tab.replace("-", " ")}
+              {tab.label}
             </button>
           ))}
         </div>
@@ -155,27 +199,32 @@ export default function BulkImporter({ onSuccess }: BulkImporterProps) {
         {/* Upload and Paste */}
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">CSV Data Source</span>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Spreadsheet / CSV Source</span>
             <div className="flex space-x-2">
               <button
                 type="button"
                 onClick={handleLoadTemplate}
                 className="text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 hover:underline cursor-pointer"
               >
-                Load Template
+                Load CSV Template
               </button>
             </div>
           </div>
 
           <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/20 p-5 text-center relative group hover:border-indigo-500/50 transition-colors">
-            <Upload className="h-6 w-6 text-slate-500 group-hover:text-indigo-400 mx-auto transition-colors" />
+            {uploadedFile ? (
+              <FileSpreadsheet className="h-6 w-6 text-emerald-400 mx-auto animate-bounce" />
+            ) : (
+              <Upload className="h-6 w-6 text-slate-500 group-hover:text-indigo-400 mx-auto transition-colors" />
+            )}
             <p className="text-xs text-slate-400 mt-2 font-medium">
-              Drag & Drop file or <span className="text-indigo-400 hover:underline cursor-pointer">browse</span>
+              {uploadedFile ? `Loaded: ${uploadedFile.name}` : "Drag & Drop file or "}
+              {!uploadedFile && <span className="text-indigo-400 hover:underline cursor-pointer">browse</span>}
             </p>
-            <p className="text-[10px] text-slate-500 mt-0.5">Supports CSV, Excel or plain text files</p>
+            <p className="text-[10px] text-slate-500 mt-0.5">Supports Excel (.xlsx) and CSV files</p>
             <input
               type="file"
-              accept=".csv,.txt"
+              accept=".csv,.txt,.xlsx,.xls"
               onChange={handleFileUpload}
               className="absolute inset-0 opacity-0 cursor-pointer"
             />
@@ -187,7 +236,7 @@ export default function BulkImporter({ onSuccess }: BulkImporterProps) {
               rows={8}
               value={csvText}
               onChange={handleTextChange}
-              placeholder="name,department,maxHoursPerWeek,source..."
+              placeholder="Course,Branch,Semester,Section,Subject Name,Subject Code,Subject Type,Faculty Name..."
               className="w-full rounded-xl border border-white/10 bg-slate-950 p-3 text-xs font-mono text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
@@ -204,7 +253,7 @@ export default function BulkImporter({ onSuccess }: BulkImporterProps) {
             {parsedData.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-slate-500 space-y-2 py-10">
                 <HelpCircle className="h-8 w-8 text-slate-600" />
-                <p className="text-xs">No records parsed yet. Paste CSV rows or upload a file to preview.</p>
+                <p className="text-xs">No records parsed yet. Upload an Excel file or paste CSV rows to preview.</p>
               </div>
             ) : (
               <table className="min-w-full divide-y divide-white/5 text-left">
@@ -242,7 +291,7 @@ export default function BulkImporter({ onSuccess }: BulkImporterProps) {
 
       {/* Message and Warnings Alerts */}
       {successMsg && (
-        <div className="flex items-start space-x-2 rounded-xl border border-emerald-500/20 bg-emerald-950/20 p-4 text-xs text-emerald-400">
+        <div className="flex items-start space-x-2 rounded-xl border border-emerald-500/20 bg-emerald-950/20 p-4 text-xs text-emerald-400 animate-pulse">
           <CheckCircle className="h-4 w-4 shrink-0 mt-0.5" />
           <span>{successMsg}</span>
         </div>
@@ -271,14 +320,14 @@ export default function BulkImporter({ onSuccess }: BulkImporterProps) {
             type="button"
             disabled={isLoading}
             onClick={handleImportSubmit}
-            className="flex items-center space-x-1.5 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-500 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+            className="flex items-center space-x-1.5 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-500 disabled:opacity-50 disabled:pointer-events-none cursor-pointer active:scale-95 transition-transform"
           >
             {isLoading ? (
               <RefreshCw className="h-4 w-4 animate-spin" />
             ) : (
               <Save className="h-4 w-4" />
             )}
-            <span>Commit {parsedData.length} Records to DB</span>
+            <span>Commit {uploadedFile ? "Excel File Data" : `${parsedData.length} Records`} to DB</span>
           </button>
         </div>
       )}
