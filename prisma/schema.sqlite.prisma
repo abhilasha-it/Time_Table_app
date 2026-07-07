@@ -1,0 +1,163 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Branch {
+  id    String @id @default(uuid())
+  code  String @unique // e.g. "CSE", "ECE"
+  name  String // e.g. "Computer Science & Engineering"
+  years Year[]
+}
+
+model Year {
+  id         String    @id @default(uuid())
+  yearNumber Int       // 1, 2, 3, 4
+  branchId   String
+  branch     Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  sections   Section[]
+  subjects   Subject[]
+
+  @@unique([branchId, yearNumber])
+}
+
+model Section {
+  id               String            @id @default(uuid())
+  name             String            // e.g. "2nd Year CSE - Section A"
+  sectionName      String            // e.g. "A", "B"
+  strength         Int
+  yearId           String
+  year             Year              @relation(fields: [yearId], references: [id], onDelete: Cascade)
+  lunchSlotIndex   Int               @default(4)
+  labBatches       LabBatch[]
+  fixedAllocations FixedAllocation[]
+  timetableEntries TimetableEntry[]
+
+  @@unique([yearId, sectionName])
+}
+
+model Subject {
+  id                 String            @id @default(uuid())
+  code               String            @unique // e.g. "CS-301"
+  name               String
+  type               String            // "ACADEMIC" or "TRAINING"
+  credits            Int
+  weeklyLectureHours Int
+  weeklyLabHours     Int?              // Nullable
+  yearId             String
+  year               Year              @relation(fields: [yearId], references: [id], onDelete: Cascade)
+  fixedAllocations   FixedAllocation[]
+  timetableEntries   TimetableEntry[]
+}
+
+model Faculty {
+  id                        String            @id @default(uuid())
+  name                      String
+  department                String
+  maxHoursPerWeek           Int               @default(18)
+  source                    String            // "COLLEGE" or "TRAINING_DEPT"
+  fixedAllocations          FixedAllocation[]
+  timetableEntries          TimetableEntry[]
+  assistantTimetableEntries TimetableEntry[]  @relation(name: "AssistantFaculty")
+}
+
+model Room {
+  id               String            @id @default(uuid())
+  name             String            @unique
+  type             String            // "CLASSROOM" or "LAB"
+  capacity         Int
+  fixedAllocations FixedAllocation[]
+  timetableEntries TimetableEntry[]
+}
+
+model TimeSlot {
+  id               String            @id @default(uuid())
+  day              Int               // 0 = Monday, 5 = Saturday
+  startTime        String            // e.g. "09:00"
+  endTime          String            // e.g. "10:00"
+  slotIndex        Int               // 0 to 7
+  fixedAllocations FixedAllocation[]
+  timetableEntries TimetableEntry[]
+
+  @@unique([day, slotIndex])
+}
+
+model FixedAllocation {
+  id         String   @id @default(uuid())
+  subjectId  String
+  subject    Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  facultyId  String
+  faculty    Faculty  @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  sectionId  String
+  section    Section  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  timeSlotId String
+  timeSlot   TimeSlot @relation(fields: [timeSlotId], references: [id], onDelete: Cascade)
+  roomId     String
+  room       Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  isLocked   Boolean  @default(true)
+
+  @@unique([timeSlotId, sectionId])
+  @@unique([timeSlotId, facultyId])
+  @@unique([timeSlotId, roomId])
+}
+
+model LabBatch {
+  id               String           @id @default(uuid())
+  name             String           // e.g. "Batch 1", "Batch 2"
+  strength         Int
+  sectionId        String
+  section          Section          @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  timetableEntries TimetableEntry[]
+
+  @@unique([sectionId, name])
+}
+
+model GeneratedTimetable {
+  id        String           @id @default(uuid())
+  name      String
+  version   Int              @default(1)
+  createdAt DateTime         @default(now())
+  isActive  Boolean          @default(false)
+  entries   TimetableEntry[]
+}
+
+model TimetableEntry {
+  id                 String             @id @default(uuid())
+  timetableId        String
+  timetable          GeneratedTimetable @relation(fields: [timetableId], references: [id], onDelete: Cascade)
+  
+  sectionId          String?
+  section            Section?           @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  
+  labBatchId         String?
+  labBatch           LabBatch?          @relation(fields: [labBatchId], references: [id], onDelete: Cascade)
+  
+  subjectId          String
+  subject            Subject            @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  
+  facultyId          String
+  faculty            Faculty            @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  
+  assistantFacultyId String?
+  assistantFaculty   Faculty?           @relation(name: "AssistantFaculty", fields: [assistantFacultyId], references: [id], onDelete: SetNull)
+  
+  roomId             String
+  room               Room               @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  
+  timeSlotId         String
+  timeSlot           TimeSlot           @relation(fields: [timeSlotId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String
+  details   String
+  timestamp DateTime @default(now())
+  user      String   @default("Staff Admin")
+}
