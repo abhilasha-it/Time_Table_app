@@ -13,6 +13,7 @@ const modelMap: { [key: string]: string } = {
   'fixed-allocations': 'fixedAllocation',
   'batches': 'labBatch',
   'auditlogs': 'auditLog',
+  'faculty-assignments': 'facultyAssignment',
 };
 
 // Map URL segments to their automatic relationship includes
@@ -20,8 +21,10 @@ const includeMap: { [key: string]: any } = {
   'years': { branch: true },
   'sections': { year: { include: { branch: true } }, labBatches: true },
   'subjects': { year: { include: { branch: true } } },
+  'rooms': { sharedSections: true },
   'fixed-allocations': { subject: true, faculty: true, section: true, timeSlot: true, room: true },
   'batches': { section: true },
+  'faculty-assignments': { subject: true, section: true, faculty: true, assistantFaculty: true },
 };
 
 function getModelDelegate(entity: string) {
@@ -277,6 +280,48 @@ export async function POST(
 
       return NextResponse.json(createdAllocations[0]);
     } else {
+      if (entity === 'rooms') {
+        const { name, type, capacity, sectionIds } = body;
+        const createdRoom = await db.room.create({
+          data: {
+            name,
+            type,
+            capacity,
+            sharedSections: sectionIds && sectionIds.length > 0 ? {
+              connect: sectionIds.map((id: string) => ({ id }))
+            } : undefined
+          },
+          include: { sharedSections: true }
+        });
+        await db.auditLog.create({
+          data: {
+            action: "CREATE",
+            details: `Created Room: ${createdRoom.name} (${createdRoom.type}, Cap: ${createdRoom.capacity}) shared with ${sectionIds ? sectionIds.length : 0} sections.`
+          }
+        });
+        return NextResponse.json(createdRoom);
+      }
+
+      if (entity === 'faculty-assignments') {
+        const { subjectId, sectionId, facultyId, assistantFacultyId } = body;
+        const created = await db.facultyAssignment.create({
+          data: {
+            subjectId,
+            sectionId,
+            facultyId,
+            assistantFacultyId: assistantFacultyId || null
+          },
+          include: { subject: true, section: true, faculty: true, assistantFaculty: true }
+        });
+        await db.auditLog.create({
+          data: {
+            action: "CREATE",
+            details: `Created Faculty Assignment: Section ${created.section.sectionName}, Subject ${created.subject.code}, Teacher ${created.faculty.name}.`
+          }
+        });
+        return NextResponse.json(created);
+      }
+
       // General audit log for other entity creation
       await db.auditLog.create({
         data: {
@@ -340,6 +385,50 @@ export async function PUT(
           { status: 400 }
         );
       }
+    }
+
+    if (entity === 'rooms') {
+      const { name, type, capacity, sectionIds } = data;
+      const updatedRoom = await db.room.update({
+        where: { id },
+        data: {
+          name,
+          type,
+          capacity,
+          sharedSections: {
+            set: sectionIds ? sectionIds.map((sid: string) => ({ id: sid })) : []
+          }
+        },
+        include: { sharedSections: true }
+      });
+      await db.auditLog.create({
+        data: {
+          action: "UPDATE",
+          details: `Updated Room: ${updatedRoom.name} shared with ${sectionIds ? sectionIds.length : 0} sections.`
+        }
+      });
+      return NextResponse.json(updatedRoom);
+    }
+
+    if (entity === 'faculty-assignments') {
+      const { subjectId, sectionId, facultyId, assistantFacultyId } = data;
+      const updated = await db.facultyAssignment.update({
+        where: { id },
+        data: {
+          subjectId,
+          sectionId,
+          facultyId,
+          assistantFacultyId: assistantFacultyId || null
+        },
+        include: { subject: true, section: true, faculty: true, assistantFaculty: true }
+      });
+      await db.auditLog.create({
+        data: {
+          action: "UPDATE",
+          details: `Updated Faculty Assignment: Section ${updated.section.sectionName}, Subject ${updated.subject.code}, Teacher ${updated.faculty.name}.`
+        }
+      });
+      return NextResponse.json(updated);
     }
 
     const includes = includeMap[entity];

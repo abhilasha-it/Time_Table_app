@@ -20,6 +20,7 @@ type TabType =
   | "rooms" 
   | "timeslots" 
   | "fixedallocations"
+  | "facultyassignments"
   | "auditlogs";
 
 export default function AdminPage() {
@@ -93,6 +94,7 @@ export default function AdminPage() {
     rooms: { label: "Rooms", icon: Home, api: "rooms" },
     timeslots: { label: "TimeSlots", icon: Clock, api: "timeslots" },
     fixedallocations: { label: "Fixed Allocations", icon: Lock, api: "fixed-allocations" },
+    facultyassignments: { label: "Faculty Assignments", icon: Users, api: "faculty-assignments" },
     auditlogs: { label: "Audit Logs", icon: ShieldCheck, api: "auditlogs" },
   };
 
@@ -105,7 +107,7 @@ export default function AdminPage() {
   const fetchAllData = async () => {
     setIsLoading(true);
     try {
-      const keys: TabType[] = ["branches", "sections", "subjects", "faculty", "rooms", "timeslots", "fixedallocations", "auditlogs"];
+      const keys: TabType[] = ["branches", "sections", "subjects", "faculty", "rooms", "timeslots", "fixedallocations", "facultyassignments", "auditlogs"];
       const updatedMeta: any = {};
       
       // Load years too, since sections/subjects require them
@@ -293,6 +295,11 @@ export default function AdminPage() {
       defaults.roomId = metadata.rooms[0]?.id || "";
       defaults.timeSlotId = metadata.timeslots[0]?.id || "";
       defaults.consecutiveLectures = 1;
+    } else if (activeTab === "facultyassignments") {
+      defaults.subjectId = metadata.subjects[0]?.id || "";
+      defaults.sectionId = metadata.sections[0]?.id || "";
+      defaults.facultyId = metadata.faculty[0]?.id || "";
+      defaults.assistantFacultyId = "";
     }
     
     setFormData(defaults);
@@ -302,7 +309,12 @@ export default function AdminPage() {
   const openEditModal = (item: any) => {
     setModalMode("edit");
     setEditingItem(item);
-    setFormData({ ...item });
+    if (activeTab === "rooms") {
+      const sectionIds = item.sharedSections ? item.sharedSections.map((s: any) => s.id) : [];
+      setFormData({ ...item, sectionIds });
+    } else {
+      setFormData({ ...item });
+    }
     setIsModalOpen(true);
   };
 
@@ -812,6 +824,39 @@ export default function AdminPage() {
                       </table>
                     )}
 
+                    {/* 8. FACULTY ASSIGNMENTS TABLE */}
+                    {activeTab === "facultyassignments" && (
+                      <table className="min-w-full divide-y divide-white/5 text-left text-xs">
+                        <thead className="bg-slate-900/50">
+                          <tr>
+                            <th className="px-6 py-4 font-semibold text-slate-400">Section</th>
+                            <th className="px-6 py-4 font-semibold text-slate-400">Subject</th>
+                            <th className="px-6 py-4 font-semibold text-slate-400">Primary Faculty</th>
+                            <th className="px-6 py-4 font-semibold text-slate-400">Assistant Faculty</th>
+                            <th className="px-6 py-4 text-right font-semibold text-slate-400">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                          {!metadata.facultyassignments || metadata.facultyassignments.length === 0 ? (
+                            <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500">No explicit faculty workload assignments added.</td></tr>
+                          ) : (
+                            metadata.facultyassignments.map((fa: any) => (
+                              <tr key={fa.id} className="hover:bg-slate-900/10">
+                                <td className="px-6 py-4 font-bold text-white">{fa.section?.name}</td>
+                                <td className="px-6 py-4 text-slate-300">{fa.subject?.code} - {fa.subject?.name}</td>
+                                <td className="px-6 py-4 text-slate-300 font-semibold">{fa.faculty?.name}</td>
+                                <td className="px-6 py-4 text-slate-400">{fa.assistantFaculty ? fa.assistantFaculty.name : "None"}</td>
+                                <td className="px-6 py-4 text-right space-x-3">
+                                  <button onClick={() => openEditModal(fa)} className="text-slate-400 hover:text-white cursor-pointer"><Edit3 className="h-4 w-4 inline" /></button>
+                                  <button onClick={() => handleDelete(fa.id)} className="text-red-400 hover:text-red-300 cursor-pointer"><Trash2 className="h-4 w-4 inline" /></button>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    )}
+
                     {/* 8. AUDIT LOGS TABLE */}
                     {activeTab === "auditlogs" && (
                       <table className="min-w-full divide-y divide-white/5 text-left text-xs">
@@ -1174,6 +1219,38 @@ export default function AdminPage() {
                       className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
                     />
                   </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Shared Sections (Optional)</label>
+                    <p className="text-[10px] text-slate-500 mb-2">Select which sections are allowed to use this room. Leave all unchecked to share globally.</p>
+                    <div className="max-h-40 overflow-y-auto rounded-xl border border-white/10 bg-slate-950 p-3 space-y-2">
+                      {metadata.sections.map((sec: any) => {
+                        const isChecked = formData.sectionIds?.includes(sec.id) || false;
+                        return (
+                          <label key={sec.id} className="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer hover:text-white">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setFormData((prev: any) => {
+                                  const ids = prev.sectionIds ? [...prev.sectionIds] : [];
+                                  if (checked) {
+                                    if (!ids.includes(sec.id)) ids.push(sec.id);
+                                  } else {
+                                    const index = ids.indexOf(sec.id);
+                                    if (index > -1) ids.splice(index, 1);
+                                  }
+                                  return { ...prev, sectionIds: ids };
+                                });
+                              }}
+                              className="rounded border-white/10 bg-slate-950 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                            />
+                            <span>{sec.name}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </>
               )}
 
@@ -1339,6 +1416,81 @@ export default function AdminPage() {
                       Lock Allocation (Immovable by Scheduler)
                     </label>
                   </div>
+                </>
+              )}
+
+              {/* FACULTY ASSIGNMENTS FORM */}
+              {activeTab === "facultyassignments" && (
+                <>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Target Section</label>
+                    <select
+                      name="sectionId"
+                      value={formData.sectionId || ""}
+                      onChange={handleInputChange}
+                      className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                    >
+                      {metadata.sections.map((s: any) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Academic Subject</label>
+                    <select
+                      name="subjectId"
+                      value={formData.subjectId || ""}
+                      onChange={handleInputChange}
+                      className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                    >
+                      {metadata.subjects.filter((s: any) => s.type === "ACADEMIC").map((s: any) => (
+                        <option key={s.id} value={s.id}>
+                          {s.code} - {s.name} ({s.weeklyLectureHours > 0 ? "Lecture" : "Lab"})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Primary Faculty</label>
+                    <select
+                      name="facultyId"
+                      value={formData.facultyId || ""}
+                      onChange={handleInputChange}
+                      className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                    >
+                      {metadata.faculty.map((f: any) => (
+                        <option key={f.id} value={f.id}>
+                          {f.name} ({f.department})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {/* Show Assistant Faculty Dropdown for Lab Courses */}
+                  {(() => {
+                    const sub = metadata.subjects.find((s: any) => s.id === (formData.subjectId || metadata.subjects[0]?.id));
+                    const isLabSubject = sub && (sub.weeklyLabHours > 0 || sub.type === "LAB");
+                    if (!isLabSubject) return null;
+                    return (
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-400 mb-1">Assistant/Secondary Faculty (Lab Only)</label>
+                        <select
+                          name="assistantFacultyId"
+                          value={formData.assistantFacultyId || ""}
+                          onChange={handleInputChange}
+                          className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                        >
+                          <option value="">Select Assistant Faculty</option>
+                          {metadata.faculty.filter((f: any) => f.id !== formData.facultyId).map((f: any) => (
+                            <option key={f.id} value={f.id}>
+                              {f.name} ({f.department})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  })()}
                 </>
               )}
 

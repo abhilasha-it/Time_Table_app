@@ -38,6 +38,8 @@ model Section {
   labBatches       LabBatch[]
   fixedAllocations FixedAllocation[]
   timetableEntries TimetableEntry[]
+  sharedRooms      Room[]            @relation(name: "RoomSharing")
+  facultyAssignments FacultyAssignment[]
 
   @@unique([yearId, sectionName])
 }
@@ -54,6 +56,7 @@ model Subject {
   year               Year              @relation(fields: [yearId], references: [id], onDelete: Cascade)
   fixedAllocations   FixedAllocation[]
   timetableEntries   TimetableEntry[]
+  facultyAssignments FacultyAssignment[]
 }
 
 model Faculty {
@@ -65,6 +68,8 @@ model Faculty {
   fixedAllocations          FixedAllocation[]
   timetableEntries          TimetableEntry[]
   assistantTimetableEntries TimetableEntry[]  @relation(name: "AssistantFaculty")
+  primaryAssignments        FacultyAssignment[] @relation(name: "PrimaryFacultyAssignment")
+  secondaryAssignments      FacultyAssignment[] @relation(name: "SecondaryFacultyAssignment")
 }
 
 model Room {
@@ -74,6 +79,7 @@ model Room {
   capacity         Int
   fixedAllocations FixedAllocation[]
   timetableEntries TimetableEntry[]
+  sharedSections   Section[]         @relation(name: "RoomSharing")
 }
 
 model TimeSlot {
@@ -160,4 +166,18 @@ model AuditLog {
   details   String
   timestamp DateTime @default(now())
   user      String   @default("Staff Admin")
+}
+
+model FacultyAssignment {
+  id                 String   @id @default(uuid())
+  subjectId          String
+  subject            Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  sectionId          String
+  section            Section  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  facultyId          String
+  faculty            Faculty  @relation(name: "PrimaryFacultyAssignment", fields: [facultyId], references: [id], onDelete: Cascade)
+  assistantFacultyId String?
+  assistantFaculty   Faculty? @relation(name: "SecondaryFacultyAssignment", fields: [assistantFacultyId], references: [id], onDelete: SetNull)
+
+  @@unique([subjectId, sectionId])
 }

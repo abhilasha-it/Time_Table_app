@@ -40,13 +40,16 @@ export default function TimetableGrid({
     facultyId: "",
     assistantFacultyId: "",
     roomId: "",
+    timeSlotId: "",
   });
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
   const [isValidating, setIsValidating] = useState(false);
 
   React.useEffect(() => {
     if (!editingSlot) {
       setValidationError(null);
+      setSuggestions([]);
       return;
     }
 
@@ -61,18 +64,22 @@ export default function TimetableGrid({
             subjectId: editForm.subjectId,
             facultyId: editForm.facultyId,
             assistantFacultyId: editForm.assistantFacultyId || null,
-            roomId: editForm.roomId
+            roomId: editForm.roomId,
+            timeSlotId: editForm.timeSlotId || null,
           })
         });
         const data = await res.json();
         if (res.ok) {
           setValidationError(data.error);
+          setSuggestions(data.suggestions || []);
         } else {
           setValidationError(data.error || "Failed to validate edit.");
+          setSuggestions([]);
         }
       } catch (err) {
         console.error(err);
         setValidationError("Error connecting to validation engine.");
+        setSuggestions([]);
       } finally {
         setIsValidating(false);
       }
@@ -80,7 +87,7 @@ export default function TimetableGrid({
 
     const delay = setTimeout(validateEdit, 300);
     return () => clearTimeout(delay);
-  }, [editForm.subjectId, editForm.facultyId, editForm.assistantFacultyId, editForm.roomId, editingSlot]);
+  }, [editForm.subjectId, editForm.facultyId, editForm.assistantFacultyId, editForm.roomId, editForm.timeSlotId, editingSlot]);
 
   const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
@@ -138,6 +145,7 @@ export default function TimetableGrid({
       facultyId: slot.facultyId,
       assistantFacultyId: slot.assistantFacultyId || "",
       roomId: slot.roomId,
+      timeSlotId: slot.timeSlotId || "",
     });
   };
 
@@ -491,6 +499,31 @@ export default function TimetableGrid({
                 <div className="flex items-start space-x-3 rounded-lg bg-rose-500/10 p-3 text-[11px] text-rose-400 border border-rose-500/20">
                   <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                   <span>{validationError}</span>
+                </div>
+              )}
+
+              {validationError && suggestions && suggestions.length > 0 && (
+                <div className="rounded-xl border border-emerald-500/20 bg-emerald-950/20 p-3 space-y-1.5 animate-in fade-in duration-200">
+                  <span className="block text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Suggested Conflict-Free Timeslots:</span>
+                  <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pr-1">
+                    {suggestions.map((s: any) => (
+                      <button
+                        key={s.timeSlotId}
+                        type="button"
+                        onClick={() => {
+                          setEditForm(prev => ({ ...prev, timeSlotId: s.timeSlotId }));
+                        }}
+                        className={`rounded-lg px-2.5 py-1 text-[10px] font-semibold transition cursor-pointer ${
+                          editForm.timeSlotId === s.timeSlotId
+                            ? "bg-emerald-500 text-slate-950 font-bold"
+                            : "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+                        }`}
+                      >
+                        {daysOfWeek[s.day]} P{s.slotIndex + 1}
+                      </button>
+                    ))}
+                  </div>
+                  <span className="block text-[9px] text-slate-500 italic mt-0.5">Click a suggestion to reschedule the period to that time.</span>
                 </div>
               )}
 

@@ -103,7 +103,16 @@ export async function getMetadata() {
   return { branches, teachers, rooms, timeslots };
 }
 
-export async function updateSlot(entryId: string, data: { facultyId: string; assistantFacultyId?: string | null; roomId: string; subjectId: string }) {
+export async function updateSlot(
+  entryId: string, 
+  data: { 
+    facultyId: string; 
+    assistantFacultyId?: string | null; 
+    roomId: string; 
+    subjectId: string;
+    timeSlotId?: string;
+  }
+) {
   return db.timetableEntry.update({
     where: { id: entryId },
     data,

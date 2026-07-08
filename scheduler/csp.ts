@@ -6,6 +6,7 @@ export interface Variable {
   labBatchId?: string;
   subjectId: string;
   facultyId: string;
+  assistantFacultyId?: string | null;
   isLab: boolean;
   duration: number; // e.g. 1 for lecture, 3 for lab
   strength: number;
@@ -40,6 +41,8 @@ export class TimeTableCSP {
   private rooms: any[] = [];
   private timeSlots: any[] = [];
   private fixedAllocations: any[] = [];
+  private facultyAssignments: any[] = [];
+  private assistantFacultyMap = new Map<string, string>();
 
   private targetYearId?: string;
   private targetSectionIds?: string[];
@@ -65,13 +68,16 @@ export class TimeTableCSP {
         include: { year: { include: { branch: true } } }
       });
       this.faculties = await db.faculty.findMany();
-      this.rooms = await db.room.findMany();
+      this.rooms = await db.room.findMany({
+        include: { sharedSections: true }
+      });
       this.timeSlots = (await db.timeSlot.findMany({
         orderBy: [{ day: 'asc' }, { slotIndex: 'asc' }]
       })).filter((ts: any) => ts.day < 5);
       this.fixedAllocations = await db.fixedAllocation.findMany({
         include: { timeSlot: true }
       });
+      this.facultyAssignments = await db.facultyAssignment.findMany();
 
       // Filter sections to schedule
       if (this.targetSectionIds && this.targetSectionIds.length > 0) {
@@ -183,6 +189,8 @@ export class TimeTableCSP {
       facultyLoadHours.set(fa.facultyId, current + 1);
     }
 
+    this.assistantFacultyMap.clear();
+
     for (const section of this.sections) {
       // Find all academic subjects for this section's year
       const academicSubjects = this.subjects.filter(
@@ -190,49 +198,70 @@ export class TimeTableCSP {
       );
 
       for (const subject of academicSubjects) {
-        // Find eligible faculties in the same department
-        let eligibleFaculties = this.faculties.filter(
-          (f) => f.department.toLowerCase() === section.year.branch.code.toLowerCase() && f.source === "COLLEGE"
+        const requiredHours = subject.weeklyLectureHours + (subject.weeklyLabHours || 0);
+
+        // 1. Check for explicit FacultyAssignment mapping
+        const explicitAssignment = this.facultyAssignments.find(
+          (fa) => fa.sectionId === section.id && fa.subjectId === subject.id
         );
 
-        // Fallbacks for general subjects (like First Year Math/Physics)
-        if (eligibleFaculties.length === 0) {
-          if (subject.name.toLowerCase().includes("math") || subject.code.toLowerCase().includes("mat")) {
-            eligibleFaculties = this.faculties.filter(f => f.department.toLowerCase() === "mathematics");
-          } else if (subject.name.toLowerCase().includes("phys") || subject.code.toLowerCase().includes("phy")) {
-            eligibleFaculties = this.faculties.filter(f => f.department.toLowerCase() === "physics");
-          } else {
-            eligibleFaculties = this.faculties.filter(f => f.source === "COLLEGE");
+        let selectedFacultyId = "";
+
+        if (explicitAssignment) {
+          selectedFacultyId = explicitAssignment.facultyId;
+          const current = facultyLoadHours.get(explicitAssignment.facultyId) || 0;
+          facultyLoadHours.set(explicitAssignment.facultyId, current + requiredHours);
+
+          if (explicitAssignment.assistantFacultyId) {
+            this.assistantFacultyMap.set(`${section.id}_${subject.id}`, explicitAssignment.assistantFacultyId);
           }
-        }
-
-        // Pick faculty with the least workload who has not exceeded max hours limit
-        const requiredHours = subject.weeklyLectureHours + (subject.weeklyLabHours || 0);
-        let selectedFaculty = null;
-        let minLoad = Infinity;
-
-        for (const faculty of eligibleFaculties) {
-          const load = facultyLoadHours.get(faculty.id) || 0;
-          if (load + requiredHours <= faculty.maxHoursPerWeek && load < minLoad) {
-            minLoad = load;
-            selectedFaculty = faculty;
-          }
-        }
-
-        // Hard fallback if all matched faculty are overloaded
-        if (!selectedFaculty && eligibleFaculties.length > 0) {
-          selectedFaculty = eligibleFaculties[0];
-        }
-
-        if (selectedFaculty) {
-          map.set(`${section.id}_${subject.id}`, selectedFaculty.id);
-          const current = facultyLoadHours.get(selectedFaculty.id) || 0;
-          facultyLoadHours.set(selectedFaculty.id, current + requiredHours);
         } else {
-          // Absolute fallback to any college faculty
-          const fallback = this.faculties.find(f => f.source === "COLLEGE") || this.faculties[0];
-          map.set(`${section.id}_${subject.id}`, fallback.id);
+          // Fall back to dynamic balancing
+          // Find eligible faculties in the same department
+          let eligibleFaculties = this.faculties.filter(
+            (f) => f.department.toLowerCase() === section.year.branch.code.toLowerCase() && f.source === "COLLEGE"
+          );
+
+          // Fallbacks for general subjects (like First Year Math/Physics)
+          if (eligibleFaculties.length === 0) {
+            if (subject.name.toLowerCase().includes("math") || subject.code.toLowerCase().includes("mat")) {
+              eligibleFaculties = this.faculties.filter(f => f.department.toLowerCase() === "mathematics");
+            } else if (subject.name.toLowerCase().includes("phys") || subject.code.toLowerCase().includes("phy")) {
+              eligibleFaculties = this.faculties.filter(f => f.department.toLowerCase() === "physics");
+            } else {
+              eligibleFaculties = this.faculties.filter(f => f.source === "COLLEGE");
+            }
+          }
+
+          // Pick faculty with the least workload who has not exceeded max hours limit
+          let selectedFaculty = null;
+          let minLoad = Infinity;
+
+          for (const faculty of eligibleFaculties) {
+            const load = facultyLoadHours.get(faculty.id) || 0;
+            if (load + requiredHours <= faculty.maxHoursPerWeek && load < minLoad) {
+              minLoad = load;
+              selectedFaculty = faculty;
+            }
+          }
+
+          // Hard fallback if all matched faculty are overloaded
+          if (!selectedFaculty && eligibleFaculties.length > 0) {
+            selectedFaculty = eligibleFaculties[0];
+          }
+
+          if (selectedFaculty) {
+            selectedFacultyId = selectedFaculty.id;
+            const current = facultyLoadHours.get(selectedFaculty.id) || 0;
+            facultyLoadHours.set(selectedFaculty.id, current + requiredHours);
+          } else {
+            // Absolute fallback to any college faculty
+            const fallback = this.faculties.find(f => f.source === "COLLEGE") || this.faculties[0];
+            selectedFacultyId = fallback.id;
+          }
         }
+
+        map.set(`${section.id}_${subject.id}`, selectedFacultyId);
       }
     }
 
@@ -270,6 +299,7 @@ export class TimeTableCSP {
         // 2. Generate Lab Variables
         if (subject.weeklyLabHours && subject.weeklyLabHours > 0) {
           const duration = subject.weeklyLabHours;
+          const assistantFacultyId = this.assistantFacultyMap.get(`${section.id}_${subject.id}`);
           
           // Check if section strength exceeds lab capacity limit (typically labs capacity ~35)
           const maxLabRoomCap = Math.max(...this.rooms.filter(r => r.type === "LAB").map(r => r.capacity), 35);
@@ -282,6 +312,7 @@ export class TimeTableCSP {
                 labBatchId: batch.id,
                 subjectId: subject.id,
                 facultyId,
+                assistantFacultyId,
                 isLab: true,
                 duration,
                 strength: batch.strength
@@ -294,6 +325,7 @@ export class TimeTableCSP {
               sectionId: section.id,
               subjectId: subject.id,
               facultyId,
+              assistantFacultyId,
               isLab: true,
               duration,
               strength: section.strength
@@ -317,9 +349,6 @@ export class TimeTableCSP {
       const values: Value[] = [];
       const eligibleRooms = v.isLab ? labs : classrooms;
 
-      // Filter rooms by capacity
-      const compatibleRooms = eligibleRooms.filter((r) => r.capacity >= v.strength);
-
       // Find section associated with variable
       let targetSecId = v.sectionId;
       if (v.labBatchId) {
@@ -327,6 +356,17 @@ export class TimeTableCSP {
         if (batch) targetSecId = batch.sectionId;
       }
       const section = this.sections.find(s => s.id === targetSecId);
+
+      // Filter rooms by capacity AND section sharing rules
+      const compatibleRooms = eligibleRooms.filter((r) => {
+        // Capacity check
+        if (r.capacity < v.strength) return false;
+        // Sharing rule check
+        if (r.sharedSections && r.sharedSections.length > 0) {
+          return r.sharedSections.some((sec: any) => sec.id === targetSecId);
+        }
+        return true; // No sharedSections means shared globally
+      });
 
       for (const timeSlot of this.timeSlots) {
         const day = timeSlot.day;
@@ -384,52 +424,75 @@ export class TimeTableCSP {
 
           if (v.isLab) {
             // Find eligible assistant faculty members
-            const dept = section?.year?.branch?.code || "";
-            let eligibleAssistants = this.faculties.filter(f => 
-              f.id !== v.facultyId &&
-              f.source === "COLLEGE" &&
-              f.department.toLowerCase() === dept.toLowerCase()
-            );
-            if (eligibleAssistants.length === 0) {
-              eligibleAssistants = this.faculties.filter(f => 
-                f.id !== v.facultyId &&
-                f.source === "COLLEGE"
-              );
-            }
-
-            const availableAssistants = eligibleAssistants.filter(f => {
+            if (v.assistantFacultyId) {
+              // Preassigned assistant! Only check if this assistant is free at this slot
+              let asstLocked = false;
               for (const idx of occupiedSlotIndices) {
-                if (this.lockedFacultySlots.has(`${f.id}_${day}_${idx}`)) {
-                  return false;
+                if (this.lockedFacultySlots.has(`${v.assistantFacultyId}_${day}_${idx}`)) {
+                  asstLocked = true;
+                  break;
                 }
               }
-              return true;
-            });
-
-            if (availableAssistants.length > 0) {
-              for (const assistant of availableAssistants) {
+              if (!asstLocked) {
                 values.push({
                   timeSlotId: timeSlot.id,
                   roomId: room.id,
                   facultyId: v.facultyId,
-                  assistantFacultyId: assistant.id,
+                  assistantFacultyId: v.assistantFacultyId,
                   day,
                   startSlotIndex: startSlotIdx,
                   occupiedSlotIndices
                 });
               }
             } else {
-              // Fallback to any other faculty member who is free
-              const fallback = this.faculties.find(f => f.id !== v.facultyId) || this.faculties[0];
-              values.push({
-                timeSlotId: timeSlot.id,
-                roomId: room.id,
-                facultyId: v.facultyId,
-                assistantFacultyId: fallback?.id,
-                day,
-                startSlotIndex: startSlotIdx,
-                occupiedSlotIndices
+              // Fall back to original dynamic assistant search
+              const dept = section?.year?.branch?.code || "";
+              let eligibleAssistants = this.faculties.filter(f => 
+                f.id !== v.facultyId &&
+                f.source === "COLLEGE" &&
+                f.department.toLowerCase() === dept.toLowerCase()
+              );
+              if (eligibleAssistants.length === 0) {
+                eligibleAssistants = this.faculties.filter(f => 
+                  f.id !== v.facultyId &&
+                  f.source === "COLLEGE"
+                );
+              }
+
+              const availableAssistants = eligibleAssistants.filter(f => {
+                for (const idx of occupiedSlotIndices) {
+                  if (this.lockedFacultySlots.has(`${f.id}_${day}_${idx}`)) {
+                    return false;
+                  }
+                }
+                return true;
               });
+
+              if (availableAssistants.length > 0) {
+                for (const assistant of availableAssistants) {
+                  values.push({
+                    timeSlotId: timeSlot.id,
+                    roomId: room.id,
+                    facultyId: v.facultyId,
+                    assistantFacultyId: assistant.id,
+                    day,
+                    startSlotIndex: startSlotIdx,
+                    occupiedSlotIndices
+                  });
+                }
+              } else {
+                // Fallback to any other faculty member who is free
+                const fallback = this.faculties.find(f => f.id !== v.facultyId) || this.faculties[0];
+                values.push({
+                  timeSlotId: timeSlot.id,
+                  roomId: room.id,
+                  facultyId: v.facultyId,
+                  assistantFacultyId: fallback ? fallback.id : null,
+                  day,
+                  startSlotIndex: startSlotIdx,
+                  occupiedSlotIndices
+                });
+              }
             }
           } else {
             values.push({

@@ -261,7 +261,7 @@ export async function POST(request: Request) {
             let faculty = await tx.faculty.findFirst({ where: { name: facName } });
             if (!faculty) {
               const isTraining = subject.type === 'TRAINING';
-              await tx.faculty.create({
+              faculty = await tx.faculty.create({
                 data: {
                   name: facName,
                   department: branchCode,
@@ -269,6 +269,33 @@ export async function POST(request: Request) {
                   source: isTraining ? 'TRAINING_DEPT' : 'COLLEGE'
                 }
               });
+            }
+
+            // Auto-create/update FacultyAssignment for ACADEMIC subjects
+            if (subject.type === 'ACADEMIC') {
+              const existingAssignment = await tx.facultyAssignment.findUnique({
+                where: {
+                  subjectId_sectionId: {
+                    subjectId: subject.id,
+                    sectionId: section.id
+                  }
+                }
+              });
+
+              if (!existingAssignment) {
+                await tx.facultyAssignment.create({
+                  data: {
+                    subjectId: subject.id,
+                    sectionId: section.id,
+                    facultyId: faculty.id
+                  }
+                });
+              } else if (existingAssignment.facultyId !== faculty.id) {
+                await tx.facultyAssignment.update({
+                  where: { id: existingAssignment.id },
+                  data: { facultyId: faculty.id }
+                });
+              }
             }
           }
           createdCount++;

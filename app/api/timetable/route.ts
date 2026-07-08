@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, facultyId, assistantFacultyId, roomId, subjectId } = body;
+    const { id, facultyId, assistantFacultyId, roomId, subjectId, timeSlotId } = body;
 
     if (!id || !facultyId || !roomId || !subjectId) {
        return NextResponse.json(
@@ -43,14 +43,14 @@ export async function PUT(request: NextRequest) {
 
      // Run constraint conflict checker in real-time
      const conflictError = await validateSwapOrMove(entry.timetableId, [
-       { id, facultyId, assistantFacultyId: assistantFacultyId || null, roomId, subjectId }
+       { id, facultyId, assistantFacultyId: assistantFacultyId || null, roomId, subjectId, timeSlotId }
      ]);
 
      if (conflictError) {
        return NextResponse.json({ error: conflictError }, { status: 400 });
      }
 
-     const updated = await updateSlot(id, { facultyId, assistantFacultyId: assistantFacultyId || null, roomId, subjectId });
+     const updated = await updateSlot(id, { facultyId, assistantFacultyId: assistantFacultyId || null, roomId, subjectId, timeSlotId });
 
     // Create Audit Log
     const secName = updated.section?.name || updated.labBatch?.section?.name || "Unknown Section";
