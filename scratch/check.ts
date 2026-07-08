@@ -20,12 +20,13 @@ async function main() {
   await solver.initialize();
 
   let maxDepth = 0;
-  
+  let bestAssignments: any = null;
+
   (solver as any).backtrack = function(varIndex: number): boolean {
     this.stepCount++;
     if (varIndex > maxDepth) {
       maxDepth = varIndex;
-      console.log(`New max depth reached: ${maxDepth} / ${this.variables.length}`);
+      bestAssignments = new Map(this.assignments);
     }
 
     if (this.assignments.size === this.variables.length) {
@@ -38,59 +39,10 @@ async function main() {
     const values = this.domains.get(nextVar.id) || [];
     const sortedValues = this.sortValuesByHeuristics(nextVar.id, values);
 
-    let assignedCount = 0;
-    let failReasons: string[] = [];
-
     for (const val of sortedValues) {
-      // Inline check to collect conflict details
-      let valid = true;
-      const secId = nextVar.sectionId || solver.sections.flatMap(s => s.labBatches).find(b => b.id === nextVar.labBatchId)?.sectionId;
-
-      for (const [assignedId, assignedVal] of this.assignments.entries()) {
-        const assignedVar = this.variables.find((v: any) => v.id === assignedId)!;
-        const assignedSecId = assignedVar.sectionId || solver.sections.flatMap(s => s.labBatches).find(b => b.id === assignedVar.labBatchId)?.sectionId;
-
-        const timesOverlap = assignedVal.day === val.day && 
-          assignedVal.occupiedSlotIndices.some((idx: any) => val.occupiedSlotIndices.includes(idx));
-
-        if (timesOverlap) {
-          if (assignedSecId === secId) {
-            const bothLabs = nextVar.labBatchId && assignedVar.labBatchId;
-            const sameBatch = nextVar.labBatchId === assignedVar.labBatchId;
-            if (!bothLabs || sameBatch) {
-              valid = false;
-              failReasons.push(`Section overlap with ${assignedVar.id} on day ${val.day} slot ${val.occupiedSlotIndices.join(',')}`);
-              break;
-            }
-          }
-
-          const valF1 = val.facultyId;
-          const valF2 = val.assistantFacultyId;
-          const assF1 = assignedVar.facultyId;
-          const assF2 = assignedVal.assistantFacultyId;
-
-          if (assF1 === valF1 || 
-              (valF2 && assF1 === valF2) || 
-              (assF2 && assF2 === valF1) || 
-              (assF2 && valF2 && assF2 === valF2)) {
-            valid = false;
-            failReasons.push(`Faculty overlap for ${val.facultyId} with ${assignedVar.id} on day ${val.day}`);
-            break;
-          }
-
-          if (assignedVal.roomId === val.roomId) {
-            valid = false;
-            failReasons.push(`Room overlap for ${val.roomId} with ${assignedVar.id} on day ${val.day}`);
-            break;
-          }
-        }
-      }
-
-      if (!valid) {
+      if (!this.isValidAssignment(nextVar, val)) {
         continue;
       }
-
-      assignedCount++;
 
       this.assignments.set(nextVar.id, val);
       const savedDomains = this.forwardCheck(nextVar, val);
@@ -109,24 +61,48 @@ async function main() {
       }
     }
 
-    if (assignedCount === 0 && varIndex === maxDepth && this.stepCount > 1000) {
-      console.log(`\nSTUCK at depth ${varIndex}. Variable: ${nextVar.id}`);
-      const sub = solver.subjects.find(s => s.id === nextVar.subjectId);
-      const fac = solver.faculties.find(f => f.id === nextVar.facultyId);
-      console.log(`Variable details: Subject: ${sub?.code}, Faculty: ${fac?.name}, isLab: ${nextVar.isLab}`);
-      console.log(`Domain values tested: ${values.length}`);
-      console.log("Sample failure reasons (up to 5):");
-      console.log(failReasons.slice(0, 5));
-    }
-
-    if (this.stepCount > 50000) {
-      return false;
-    }
-
     return false;
   };
 
-  (solver as any).backtrack(0);
+  const success = (solver as any).backtrack(0);
+  console.log(`Success: ${success} | Max Depth: ${maxDepth}`);
+  
+  if (bestAssignments) {
+    console.log("\nBEST ASSIGNMENTS AT MAX DEPTH:");
+    // Print day by day
+    const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+    for (let d = 0; d < 5; d++) {
+      console.log(`\n${days[d]}:`);
+      for (let p = 0; p < 9; p++) {
+        // Find if any variable is assigned to this day/period
+        const matches: string[] = [];
+        for (const [vId, val] of bestAssignments.entries()) {
+          if (val.day === d && val.occupiedSlotIndices.includes(p)) {
+            const v = solver.variables.find(x => x.id === vId)!;
+            const sub = solver.subjects.find(s => s.id === v.subjectId);
+            const fac = solver.faculties.find(f => f.id === val.facultyId);
+            const sec = solver.sections.find(s => s.id === v.sectionId || (v.labBatchId && s.labBatches.some((b: any) => b.id === v.labBatchId)));
+            matches.push(`[Sec ${sec?.sectionName}: ${sub?.code} by ${fac?.name} in ${val.roomId}]`);
+          }
+        }
+        if (matches.length > 0) {
+          console.log(`  Period ${p}: ${matches.join(' | ')}`);
+        } else {
+          console.log(`  Period ${p}: Free`);
+        }
+      }
+    }
+
+    // Print unassigned variables details
+    console.log("\nUNASSIGNED VARIABLES:");
+    for (const v of solver.variables) {
+      if (!bestAssignments.has(v.id)) {
+        const sub = solver.subjects.find(s => s.id === v.subjectId);
+        const fac = solver.faculties.find(f => f.id === v.facultyId);
+        console.log(`- Var: ${v.id} | Subject: ${sub?.code} | Faculty: ${fac?.name} | isLab: ${v.isLab}`);
+      }
+    }
+  }
 }
 
 main()
