@@ -347,11 +347,11 @@ export default function TimetableGrid({
                                 {slot.subject.name}
                               </div>
                               <div className="mt-0.5 flex items-center justify-center flex-wrap gap-1 text-[8px] text-slate-500 font-mono">
-                                <span className="truncate max-w-[55px]">{slot.faculty.name.split(' ')[0] || slot.faculty.name}</span>
+                                <span className="truncate max-w-[120px]" title={slot.faculty.name}>{slot.faculty.name}</span>
                                 {slot.assistantFaculty && (
                                   <>
                                     <span>+</span>
-                                    <span className="truncate max-w-[55px] text-indigo-400">{slot.assistantFaculty.name.split(' ')[0] || slot.assistantFaculty.name}</span>
+                                    <span className="truncate max-w-[120px] text-indigo-400" title={slot.assistantFaculty.name}>{slot.assistantFaculty.name}</span>
                                   </>
                                 )}
                                 <span>•</span>

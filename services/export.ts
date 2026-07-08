@@ -498,9 +498,9 @@ export async function generatePdfBuffer(
         
         const widthOfCode = doc.getTextWidth(`${code}: `);
         doc.setFont("Helvetica", "normal");
-        doc.text(`${info.name} (${info.faculty.split(' ')[0]})    |    `, xOffset + widthOfCode, yOffset);
+        doc.text(`${info.name} (${info.faculty})    |    `, xOffset + widthOfCode, yOffset);
         
-        xOffset += widthOfCode + doc.getTextWidth(`${info.name} (${info.faculty.split(' ')[0]})    |    `);
+        xOffset += widthOfCode + doc.getTextWidth(`${info.name} (${info.faculty})    |    `);
       }
     }
   });
