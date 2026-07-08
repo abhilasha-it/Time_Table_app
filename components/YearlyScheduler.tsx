@@ -42,16 +42,6 @@ export default function YearlyScheduler({
   const [selectedRoomId, setSelectedRoomId] = useState("");
 
   const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-  const periods = [
-    { label: "P1", isLunch: false },
-    { label: "P2", isLunch: false },
-    { label: "P3", isLunch: false },
-    { label: "P4", isLunch: false },
-    { label: "LUNCH", isLunch: true },
-    { label: "P5", isLunch: false },
-    { label: "P6", isLunch: false },
-    { label: "P7", isLunch: false },
-  ];
 
   const showToast = (message: string, type: "success" | "error" = "success") => {
     setToast({ message, type });
@@ -99,7 +89,7 @@ export default function YearlyScheduler({
         setSolvedEntries(filtered);
       }
     } catch (error) {
-      console.error("Failed to load year timetable:", error);
+      console.error("Error fetching timetable:", error);
     }
   };
 
@@ -276,12 +266,11 @@ export default function YearlyScheduler({
   const activeSections = metadata.sections.filter(s => s.yearId === selectedYearId);
 
   // Helper to find slots in cell
-  const getSlotsForCell = (secId: string, dayIdx: number, periodColIdx: number) => {
-    if (periodColIdx === 4) return [];
-    const dbPeriod = periodColIdx < 4 ? periodColIdx : periodColIdx - 1;
+  const getSlotsForCell = (secId: string, dayIdx: number, slotIndex: number, lunchSlotIndex: number) => {
+    if (slotIndex === lunchSlotIndex) return [];
     
     return solvedEntries.filter((s) => {
-      if (s.timeSlot.day !== dayIdx || s.timeSlot.slotIndex !== dbPeriod) {
+      if (s.timeSlot.day !== dayIdx || s.timeSlot.slotIndex !== slotIndex) {
         return false;
       }
       const section = s.section || s.labBatch?.section;
@@ -479,110 +468,129 @@ export default function YearlyScheduler({
             <p className="text-xs text-slate-500">Drag-and-drop slots to edit or swap records. Amber icons represent soft-constraint violations.</p>
           </div>
 
-          {activeSections.map((sec) => (
-            <div key={sec.id} className="space-y-3 rounded-2xl border border-white/5 bg-slate-950/10 p-5">
-              <div className="flex justify-between items-center px-1">
-                <span className="text-sm font-bold text-white">Section {sec.sectionName}</span>
-                <span className="text-[11px] text-slate-500 font-mono">Section Strength: {sec.strength} stds</span>
-              </div>
+          {activeSections.map((sec) => {
+            const secLunchSlotIdx = sec.lunchSlotIndex !== undefined ? sec.lunchSlotIndex : 4;
+            const secPeriods = [
+              { label: "P1", idx: 0 },
+              { label: "P2", idx: 1 },
+              { label: "P3", idx: 2 },
+              { label: "P4", idx: 3 },
+              { label: "P5", idx: 4 },
+              { label: "P6", idx: 5 },
+              { label: "P7", idx: 6 },
+              { label: "P8", idx: 7 },
+              { label: "P9", idx: 8 },
+            ].map(p => ({
+              label: p.idx === secLunchSlotIdx ? "LUNCH" : p.label,
+              isLunch: p.idx === secLunchSlotIdx,
+              idx: p.idx
+            }));
 
-              <div className="overflow-x-auto rounded-xl border border-white/5 bg-slate-900/10">
-                <table className="w-full min-w-[850px] border-collapse text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-white/5 bg-slate-900/60 font-semibold text-slate-400">
-                      <th className="p-3 w-20">Day</th>
-                      {periods.map((p, idx) => (
-                        <th key={idx} className={`p-3 text-center ${p.isLunch ? "text-slate-500" : ""}`}>
-                          {p.label}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {daysOfWeek.map((dayName, dayIdx) => {
-                      const softWarnings = checkSoftConstraints(
-                        solvedEntries.filter(s => {
-                          const section = s.section || s.labBatch?.section;
-                          return section?.id === sec.id;
-                        }),
-                        dayIdx
-                      );
+            return (
+              <div key={sec.id} className="space-y-3 rounded-2xl border border-white/5 bg-slate-950/10 p-5">
+                <div className="flex justify-between items-center px-1">
+                  <span className="text-sm font-bold text-white">Section {sec.sectionName}</span>
+                  <span className="text-[11px] text-slate-500 font-mono">Section Strength: {sec.strength} stds</span>
+                </div>
 
-                      return (
-                        <tr key={dayIdx} className="hover:bg-slate-900/5">
-                          <td className="p-3 font-bold text-slate-300 bg-slate-900/20 relative">
-                            {dayName}
-                            {softWarnings.length > 0 && (
-                              <span 
-                                className="absolute top-1 right-1 text-amber-500 hover:text-amber-400 cursor-help"
-                                title={softWarnings.join("\n")}
-                              >
-                                <AlertTriangle className="h-3.5 w-3.5" />
-                              </span>
-                            )}
-                          </td>
-                          {periods.map((p, periodIdx) => {
-                            if (p.isLunch) {
+                <div className="overflow-x-auto rounded-xl border border-white/5 bg-slate-900/10">
+                  <table className="w-full min-w-[850px] border-collapse text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-white/5 bg-slate-900/60 font-semibold text-slate-400">
+                        <th className="p-3 w-20">Day</th>
+                        {secPeriods.map((p, idx) => (
+                          <th key={idx} className={`p-3 text-center ${p.isLunch ? "text-slate-500 font-bold" : ""}`}>
+                            {p.label}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {daysOfWeek.map((dayName, dayIdx) => {
+                        const softWarnings = checkSoftConstraints(
+                          solvedEntries.filter(s => {
+                            const section = s.section || s.labBatch?.section;
+                            return section?.id === sec.id;
+                          }),
+                          dayIdx
+                        );
+
+                        return (
+                          <tr key={dayIdx} className="hover:bg-slate-900/5">
+                            <td className="p-3 font-bold text-slate-300 bg-slate-900/20 relative">
+                              {dayName}
+                              {softWarnings.length > 0 && (
+                                <span 
+                                  className="absolute top-1 right-1 text-amber-500 hover:text-amber-400 cursor-help"
+                                  title={softWarnings.join("\n")}
+                                >
+                                  <AlertTriangle className="h-3.5 w-3.5" />
+                                </span>
+                              )}
+                            </td>
+                            {secPeriods.map((p, periodIdx) => {
+                              if (p.isLunch) {
+                                return (
+                                  <td key={periodIdx} className="p-2 text-center text-[10px] font-bold font-mono tracking-widest text-slate-700 bg-slate-950/40 select-none align-middle">
+                                    LUNCH
+                                  </td>
+                                );
+                              }
+
+                              const cellSlots = getSlotsForCell(sec.id, dayIdx, p.idx, secLunchSlotIdx);
                               return (
-                                <td key={periodIdx} className="p-2 text-center text-[10px] font-bold font-mono tracking-widest text-slate-700 bg-slate-950/40 select-none align-middle">
-                                  LUNCH
+                                <td
+                                  key={periodIdx}
+                                  onDragOver={handleDragOver}
+                                  onDrop={(e) => handleDrop(e, metadata.timeslots.find(t => t.day === dayIdx && t.slotIndex === p.idx)?.id, cellSlots)}
+                                  className="p-1.5 align-middle min-h-[55px] border-r border-white/5"
+                                >
+                                  {cellSlots.length > 0 ? (
+                                    <div className="space-y-1">
+                                      {cellSlots.map((slot) => {
+                                        const isTraining = slot.subject.type === "TRAINING";
+                                        return (
+                                          <div
+                                            key={slot.id}
+                                            draggable={true}
+                                            onDragStart={(e) => handleDragStart(e, slot.id)}
+                                            className={`flex flex-col justify-between rounded-lg p-2 border text-center transition-all cursor-grab active:cursor-grabbing ${
+                                              isTraining
+                                                ? "bg-purple-500/10 border-purple-500/30 hover:bg-purple-500/15"
+                                                : slot.subject.weeklyLabHours > 0 || slot.labBatch
+                                                  ? "bg-teal-500/10 border-teal-500/25 hover:bg-teal-500/15"
+                                                  : "bg-indigo-500/10 border-indigo-500/25 hover:bg-indigo-500/15"
+                                            }`}
+                                          >
+                                            <div className="text-[9px] font-bold text-white leading-none flex justify-center items-center gap-1">
+                                              {isTraining && <span className="inline-block h-1.5 w-1.5 rounded-full bg-purple-400" />}
+                                              {slot.labBatch ? `[${slot.labBatch.name}] ` : ""}
+                                              {slot.subject.code}
+                                            </div>
+                                            <div className="mt-0.5 text-[8px] text-slate-400 font-mono truncate" title={slot.faculty.name}>
+                                              {slot.faculty.name} • <span className="font-semibold text-slate-300">{slot.room.name}</span>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    <div className="h-9 border border-dashed border-white/5 rounded-lg flex items-center justify-center text-[9px] text-slate-700 font-mono">
+                                      Free
+                                    </div>
+                                  )}
                                 </td>
                               );
-                            }
-
-                            const cellSlots = getSlotsForCell(sec.id, dayIdx, periodIdx);
-                            return (
-                              <td
-                                key={periodIdx}
-                                onDragOver={handleDragOver}
-                                onDrop={(e) => handleDrop(e, metadata.timeslots.find(t => t.day === dayIdx && t.slotIndex === (periodIdx < 4 ? periodIdx : periodIdx - 1))?.id, cellSlots)}
-                                className="p-1.5 align-middle min-h-[55px] border-r border-white/5"
-                              >
-                                {cellSlots.length > 0 ? (
-                                  <div className="space-y-1">
-                                    {cellSlots.map((slot) => {
-                                      const isTraining = slot.subject.type === "TRAINING";
-                                      return (
-                                        <div
-                                          key={slot.id}
-                                          draggable={true}
-                                          onDragStart={(e) => handleDragStart(e, slot.id)}
-                                          className={`flex flex-col justify-between rounded-lg p-2 border text-center transition-all cursor-grab active:cursor-grabbing ${
-                                            isTraining
-                                              ? "bg-purple-500/10 border-purple-500/30 hover:bg-purple-500/15"
-                                              : slot.subject.weeklyLabHours > 0 || slot.labBatch
-                                                ? "bg-teal-500/10 border-teal-500/25 hover:bg-teal-500/15"
-                                                : "bg-indigo-500/10 border-indigo-500/25 hover:bg-indigo-500/15"
-                                          }`}
-                                        >
-                                          <div className="text-[9px] font-bold text-white leading-none flex justify-center items-center gap-1">
-                                            {isTraining && <span className="inline-block h-1.5 w-1.5 rounded-full bg-purple-400" />}
-                                            {slot.labBatch ? `[${slot.labBatch.name}] ` : ""}
-                                            {slot.subject.code}
-                                          </div>
-                                          <div className="mt-0.5 text-[8px] text-slate-400 font-mono truncate">
-                                            {slot.faculty.name.split(' ')[0]} • <span className="font-semibold text-slate-300">{slot.room.name}</span>
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                ) : (
-                                  <div className="h-9 border border-dashed border-white/5 rounded-lg flex items-center justify-center text-[9px] text-slate-700 font-mono">
-                                    Free
-                                  </div>
-                                )}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                            })}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
