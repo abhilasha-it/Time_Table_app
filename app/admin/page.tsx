@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   Layers, Users, Home, BookOpen, Clock, Lock, ArrowLeft, Plus, Edit3, 
-  Trash2, X, AlertTriangle, CheckCircle, Upload, ShieldCheck 
+  Trash2, X, AlertTriangle, CheckCircle, Upload, ShieldCheck, Sun, Moon 
 } from "lucide-react";
 import SectionTreeView from "../../components/SectionTreeView";
 import BulkImporter from "../../components/BulkImporter";
@@ -24,6 +24,29 @@ type TabType =
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<TabType>("yearlygenerate");
+  const [theme, setTheme] = useState("dark");
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme") || "dark";
+    setTheme(savedTheme);
+    if (savedTheme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    localStorage.setItem("theme", nextTheme);
+    if (nextTheme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  };
+
   const [isLoading, setIsLoading] = useState(true);
   const [selectedYearIdState, setSelectedYearIdState] = useState("");
   const [selectedFilters, setSelectedFilters] = useState({
@@ -401,12 +424,21 @@ export default function AdminPage() {
               <p className="text-xs text-slate-400 mt-0.5">Configure engineering branches, workloads, rooms, and schedule algorithms.</p>
             </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3.5 py-2 text-xs font-semibold text-rose-400 hover:bg-rose-500/20 transition cursor-pointer"
-          >
-            Logout
-          </button>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={toggleTheme}
+              className="rounded-xl border border-white/5 bg-slate-900/60 p-2.5 text-slate-400 hover:text-white transition cursor-pointer"
+              title="Toggle theme"
+            >
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
+            <button
+              onClick={handleLogout}
+              className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3.5 py-2 text-xs font-semibold text-rose-400 hover:bg-rose-500/20 transition cursor-pointer"
+            >
+              Logout
+            </button>
+          </div>
         </div>
 
         {/* Dynamic Portal Stats Grid */}

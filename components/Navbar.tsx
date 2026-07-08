@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { Calendar, RefreshCw, BookOpen, Layers } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Calendar, RefreshCw, Sun, Moon } from "lucide-react";
 
 interface NavbarProps {
   onGenerate: () => void;
@@ -9,6 +9,29 @@ interface NavbarProps {
 }
 
 export default function Navbar({ onGenerate, isGenerating }: NavbarProps) {
+  const [theme, setTheme] = useState("dark");
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme") || "dark";
+    setTheme(savedTheme);
+    if (savedTheme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    localStorage.setItem("theme", nextTheme);
+    if (nextTheme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  };
+
   return (
     <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-slate-900/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -25,8 +48,16 @@ export default function Navbar({ onGenerate, isGenerating }: NavbarProps) {
           </div>
         </div>
 
-        {/* Action button */}
-        <div className="flex items-center space-x-4">
+        {/* Action buttons */}
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={toggleTheme}
+            className="rounded-xl border border-white/10 bg-slate-900/60 p-2 text-slate-400 hover:text-white transition cursor-pointer"
+            title="Toggle theme"
+          >
+            {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          </button>
+          
           <button
             onClick={onGenerate}
             disabled={isGenerating}
