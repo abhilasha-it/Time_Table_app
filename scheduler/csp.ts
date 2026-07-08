@@ -43,6 +43,7 @@ export class TimeTableCSP {
 
   private targetYearId?: string;
   private targetSectionIds?: string[];
+  private stepCount = 0;
 
   constructor(targetYearId?: string, targetSectionIds?: string[]) {
     this.targetYearId = targetYearId;
@@ -506,6 +507,11 @@ export class TimeTableCSP {
    * Uses MRV (Minimum Remaining Values) for variable selection and Forward Checking for pruning.
    */
   private backtrack(varIndex: number): boolean {
+    this.stepCount++;
+    if (this.stepCount > 8000) {
+      return false; // Prevent infinite/long recursion hanging the server
+    }
+
     // Base Case: all variables successfully assigned!
     if (this.assignments.size === this.variables.length) {
       return true;
@@ -705,16 +711,20 @@ export class TimeTableCSP {
       }
     }
 
+    this.stepCount = 0;
     this.assignments.clear();
     const success = this.backtrack(0);
 
     if (success) {
       return { success: true, assignments: this.assignments };
     } else {
+      const errorMsg = this.stepCount > 8000 
+        ? "Timetable generation timed out due to complex constraints. Please add more classrooms/labs or reduce subject lecture/lab hours to expand slot options."
+        : "Timetable constraints are infeasible. Could not find a conflict-free allocation of rooms and faculty hours for all sections. Distribute workloads or add classrooms.";
       return {
         success: false,
         assignments: new Map(),
-        error: "Timetable constraints are infeasible. Could not find a conflict-free allocation of rooms and faculty hours for all sections. Distribute workloads or add classrooms."
+        error: errorMsg
       };
     }
   }
