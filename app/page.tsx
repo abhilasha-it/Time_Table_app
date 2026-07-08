@@ -222,7 +222,7 @@ export default function Home() {
           {/* Welcome Header */}
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-2xl font-bold tracking-tight text-white md:text-3xl">College Timetables</h2>
+              <h2 className="text-2xl font-bold tracking-tight text-white md:text-3xl bg-gradient-to-r from-white via-indigo-200 to-purple-200 bg-clip-text text-transparent">ABES Engineering College Timetables</h2>
               <p className="text-sm text-slate-400 mt-1">Configure parameters, auto-schedule classes, and export sheets.</p>
             </div>
             <div>

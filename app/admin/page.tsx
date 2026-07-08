@@ -350,8 +350,8 @@ export default function AdminPage() {
             <div className="inline-flex rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 p-3.5 text-white shadow-lg shadow-indigo-600/30 border border-white/10">
               <Lock className="h-6 w-6" />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight text-white md:text-3xl">
-              Academic Portal
+            <h1 className="text-2xl font-bold tracking-tight text-white md:text-3xl bg-gradient-to-r from-white via-indigo-200 to-purple-200 bg-clip-text text-transparent">
+              ABES Academic Portal
             </h1>
             <p className="text-xs text-slate-400">
               Administrative Control and Constraint Engines Sign-In
@@ -432,8 +432,10 @@ export default function AdminPage() {
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div>
-              <h1 className="text-xl font-bold tracking-tight md:text-2xl">Administration Panel</h1>
-              <p className="text-xs text-slate-400 mt-0.5">Configure engineering branches, workloads, rooms, and schedule algorithms.</p>
+              <h1 className="text-xl font-bold tracking-tight md:text-2xl bg-gradient-to-r from-white via-indigo-200 to-purple-200 bg-clip-text text-transparent">
+                ABES Administration Panel
+              </h1>
+              <p className="text-xs text-slate-400 mt-0.5">Configure engineering branches, workloads, rooms, and schedule algorithms for ABES.</p>
             </div>
           </div>
           <div className="flex items-center space-x-3">

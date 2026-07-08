@@ -42,9 +42,9 @@ export default function Navbar({ onGenerate, isGenerating }: NavbarProps) {
           </div>
           <div>
             <h1 className="text-lg font-bold bg-gradient-to-r from-white via-indigo-200 to-purple-200 bg-clip-text text-transparent tracking-wide">
-              ACADEMIC SCHEDULING PORTAL
+              ABES ENGINEERING COLLEGE
             </h1>
-            <p className="text-[10px] uppercase font-bold tracking-wider text-indigo-400">Engineering College Control Panel</p>
+            <p className="text-[10px] uppercase font-bold tracking-wider text-indigo-400">Academic Scheduling Portal</p>
           </div>
         </div>
 
