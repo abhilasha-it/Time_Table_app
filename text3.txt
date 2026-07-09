@@ -1,0 +1,8 @@
+for merge - 
+commit to new branch 
+switch to main 
+pull from main 
+merge 
+ 
+sync msg 
+
